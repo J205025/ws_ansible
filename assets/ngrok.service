@@ -1,0 +1,19 @@
+[Unit]
+Description=ngrok - Secure Tunnels for Localhost
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/.config/ngrok/
+ExecStart=/usr/local/bin/ngrok start --all --config=/home/ubuntu/.config/ngrok/ngrok.yml --log=stdout
+Restart=on-failure
+RestartSec=10s
+LimitNOFILE=5000
+
+# Use journald for logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

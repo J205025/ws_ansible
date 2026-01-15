@@ -1,0 +1,18 @@
+[Unit]
+Description= Pi Radio Server --ezstram service
+After=network.target sound.target icecast2.service
+Wants=icecast2.service
+
+[Service]
+WorkingDirectory =/home/ubuntu/Pi_Radio_Server/
+ExecStart=/usr/bin/ezstream -c /home/ubuntu/Pi_Radio_Server/ezstream.xml
+KillMode=mixed
+Restart=on-failure
+WatchdogSec=30s
+Restart=on-failure
+RestartSec=10s
+[Install]
+WantedBy=multi-user.target
+
+
+

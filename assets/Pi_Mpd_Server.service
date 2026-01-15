@@ -1,0 +1,16 @@
+[Unit]
+Description= Pi Mpd Server Service 
+After=network.target  sound.target 
+Wants=mpd.service
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/Pi_Mpd_Server/backend/
+Environment="PATH=/home/ubuntu/Pi_Mpd_Server/backend/.venv/bin"
+#ExecStart=/home/ubuntu/Pi_Mpd_Server/backend/.venv/bin/uvicorn main:app --host unix:///run/fastapiapp.sock --workers 4
+ExecStart=/home/ubuntu/Pi_Mpd_Server/backend/.venv/bin/uvicorn main:app --uds /home/ubuntu/Pi_Mpd_Server/backend/fastapi.sock
+Restart=on-failure
+RestartSec=10s
+[Install]
+WantedBy=multi-user.target

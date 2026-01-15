@@ -1,0 +1,746 @@
+# ansible-playbook Pi_playbook.yml --tags "pi_Servers" --ask-become-pass
+
+#  sudo apt install openssh-server 
+# [Master Machine]: sudo apt install ansible-core sshpass
+# [Managed Node]:Be sure ssh login ok.
+---
+- name: Pi_Playbook
+  hosts: Pi_Servers # Pi_Hosts--> Pi_Servers
+  become: true
+  tasks:
+#----------Update Linux System---------#
+    - name: Update apt Package Cache
+      ansible.builtin.apt:
+        update_cache: true
+      tags:
+        -  all
+#---------Install Required Tools---------#
+    - name: Install Required Tools
+      ansible.builtin.package:
+        name:
+          - curl
+          - git
+#          - build-essential
+#          - libssl-dev
+#          - libffi-dev
+#          - nginx
+#          - vlc
+#          - pulseaudio
+#          - alsa-utils
+#          - gunicorn
+#          - samba
+#          - vsftpd
+#          - mpd
+        state: present
+      tags:
+        - all 
+        - software
+#-----------Install uv Tools-----------#
+    - name: Install uv
+      ansible.builtin.shell: curl -LsSf https://astral.sh/uv/install.sh | sh
+      args:
+            # Change path to /root/.cargo/bin/uv if running as root
+          creates: /home/ubuntu/.cargo/bin/uv 
+      become: false
+      tags:
+        - uv
+#----------Install nodejs via NVM-----------#
+    - name: Install NVM for Nodejs installation
+      ansible.builtin.shell: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+      args:
+        creates: "/home/ubuntu/.nvm/nvm.sh"     # Prevents re-downloading if already installed
+      become: false                              # Run as 'ubuntu' user, not root
+      tags:
+        - nodejs
+
+    - name: Install Node.js 24
+      ansible.builtin.shell: |
+        . "$HOME/.nvm/nvm.sh" && nvm install 24
+      args:
+        executable: /bin/bash                    
+      become: true                              # Run as 'ubuntu' user
+      tags:
+        - nodejs
+#----------Install Nginx and Configure for FastAPI and Flask-----------#
+    - name: Install Required Tools
+      ansible.builtin.package:
+        name:
+          - nginx
+          - python3-certbot-nginx
+          - certbot
+        state: present
+      tags:
+        - nginx
+        - nginx-fastapi
+        - nginx-flask
+
+    - name: Copy Nginx_flask site configure file to sites-available
+      ansible.builtin.copy:
+        src: ./assets/nginx_flask_ssl.conf
+        dest: /etc/nginx/sites-available/nginx_flask_ssl.conf
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - nginxxx
+        - nginx2
+
+    - name: Copy Nginx_fastapi site configure file to sites-available
+      ansible.builtin.copy:
+        src: ./assets/nginx_fastapi.conf
+        dest: /etc/nginx/sites-available/nginx_fastapi.conf
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - nginx
+        - nginx3
+        - nginx-fastapi
+
+
+    - name: Create a Symbolic Link for nginx_flask.conf
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/nginx_flask.conf
+        dest: /etc/nginx/sites-enabled/nginx_flask.conf
+        state: link
+      tags:
+        - nginxxx
+        - nginx4
+
+    - name: Create a Symbolic Link for nginx_fastapi.conf
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/nginx_fastapi.conf
+        dest: /etc/nginx/sites-enabled/nginx_fastapi.conf
+        state: link
+      tags:
+        - nginx
+        - nginx5
+        - nginx-fastapi
+
+    - name: Reload systemd configuration
+      ansible.builtin.systemd:
+        daemon_reload: true
+      tags:
+        - nginx
+        - nginx6
+        - nginx-fastapi
+
+    - name: Start Nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+      tags:
+        - nginx 
+        - nginx7
+        - nginx-fastapi 
+    
+#----------------------------------------------
+    - name: Adding user www-data to group ubuntu
+      ansible.builtin.user:
+        name: www-data
+        groups: ubuntu
+        append: true
+      tags:
+        - media
+        - media1
+
+    - name: Adding user ubuntu to group www-data
+      ansible.builtin.user:
+        name: ubuntu
+        groups: www-data
+        append: true
+      tags:
+        - media
+        - media2
+
+    - name: Ensure the destination directory exists
+      ansible.builtin.file:
+        path: /home/ubuntu/Pi_Media_Server/
+        owner: ubuntu
+        group: ubuntu
+        state: directory
+        mode: '0775'
+      tags:
+        - media
+        - media3
+
+    - name: Clone or update the repository
+      ansible.builtin.git:
+        repo: 'git@github.com:J205025/Pi_Media_Server.git' 
+        dest: /home/ubuntu/Pi_Media_Server/
+        version: main # The branch, tag, or commit to clone. 'main' is a common default.
+        accept_hostkey: yes # Automatically accept the GitHub host key.
+      tags:
+        - media
+        - media4
+
+    - name: Change Pi_Media_Server/ Folder owner and group recursively
+      ansible.builtin.file:
+        path: /home/ubuntu/Pi_Media_Server/
+        recurse: true
+        owner: ubuntu
+        group: ubuntu
+        mode: "0775"
+      tags:
+        - media
+        - media5
+
+    - name: Create Python virtual environment
+      ansible.builtin.command: python3 -m venv /home/ubuntu/Pi_Media_Server/.venv/
+      tags:
+        - media
+        - media6
+
+    - name: Install pip Packages From requirements.txt
+      ansible.builtin.pip:
+        requirements: /home/ubuntu/Pi_Media_Server/requirements.txt
+        virtualenv: /home/ubuntu/Pi_Media_Server/.venv/
+      tags:
+        - media
+        - media7
+
+    - name: Create /home/ubuntu/Music/國語/張學友/吻別/ folder
+      ansible.builtin.file:
+        path: /home/ubuntu/Music/國語/張學友/吻別/
+        owner: ubuntu
+        group: ubuntu
+        mode: "0775"
+        state: directory
+      tags:
+        - media
+        - media8
+
+    - name: Copy  an .mp3 file to /home/ubuntu/Music/國語/張學友/吻別/ folder
+      ansible.builtin.copy:
+        src: ./assets/test.mp3
+        dest: /home/ubuntu/Music/國語/張學友/吻別/test.mp3
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+      tags:
+        - media
+        - media9
+
+    - name: Copy Pi_Media_Server.service file
+      ansible.builtin.copy:
+        src: ./assets/Pi_Media_Server.service
+        dest: /etc/systemd/system/
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - media
+        - media10
+
+    - name: Reload systemd configuration
+      ansible.builtin.systemd:
+        daemon_reload: true
+      tags:
+        - media
+        - media11
+
+    - name: Start Pi_Music_Sever service
+      ansible.builtin.service:
+        name: Pi_Media_Server
+        state: restarted
+        enabled: true
+      tags:
+        - media
+        - media12
+# ---------Install and Configure Samba---------#
+    - name: Create /home/ubuntu/share folder
+      ansible.builtin.file:
+        path: /home/ubuntu/share/
+        owner: ubuntu
+        group: ubuntu
+        mode: "0774"
+        state: directory
+      tags:
+        - smb
+        - smb1
+    - name: Copy samba Configure File
+      ansible.builtin.copy:
+        src: ./assets/smb.conf
+        dest: /etc/samba/smb.conf
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - smb
+        - smb2
+
+    - name: Reload Systemd configuration
+      ansible.builtin.service:
+        daemon_reload: true
+      tags:
+        - smb
+        - smb3
+
+    - name: Start smbd service
+      ansible.builtin.service:
+        name: smbd
+        state: restarted
+        enabled: true
+      tags:
+        - smb
+        - smb4
+#---------Install and Configure vsftpd---------#
+    - name: Install Required Tools
+      ansible.builtin.package:
+        name:
+           - vsftpd
+      tags:
+        - ftp
+        - ftp1
+
+    - name: Copy vsftpd Configure File
+      ansible.builtin.copy:
+        src: ./assets/vsftpd.conf
+        dest: /etc/vsftpd.conf
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - ftp
+        - ftp2
+    - name: Reload Systemd configuration
+      ansible.builtin.service:
+        daemon_reload: true
+      tags:
+        - ftp
+        - ftp3
+
+    - name: Start sftp service
+      ansible.builtin.service:
+        name: vsftpd
+        state: restarted
+        enabled: true
+      tags:
+        - ftp
+        - ftp4
+#--------Pi_Radio_Server Setup--------#
+    - name: Create Pi_Radio_Server
+      ansible.builtin.file:
+        path: /home/ubuntu/Pi_Radio_Server/store/
+        owner: ubuntu
+        group: ubuntu
+        mode: "0775"
+        state: directory
+      tags:
+        - radio
+        - radio1
+
+    - name: Copy  an .ogg file to store folder
+      ansible.builtin.copy:
+        src: ./assets/test.ogg
+        dest: /home/ubuntu/Pi_Radio_Server/store/test.ogg
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+      tags:
+        - radio
+        - radio2
+
+    - name: Copy genlist.sh file
+      ansible.builtin.copy:
+        src: ./assets/genlist.sh
+        dest: /home/ubuntu/Pi_Radio_Server/genlist.sh
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+      tags:
+        - radio
+        - radio3
+
+    - name: Generate playlist.txt from ./store/*.ogg
+      become: true
+      become_user: ubuntu
+      ansible.builtin.command: /home/ubuntu/Pi_Radio_Server/genlist.sh
+      tags:
+        - radio
+        - radio4
+#---------Icecast2 Setup---------#
+    - name: Install Required Tools
+      ansible.builtin.package:
+        name:
+          - icecast2
+        state: present
+      tags:
+        - radio
+        - icecast
+        - icecast1
+
+    - name: Copy icecast2.xml file
+      ansible.builtin.copy:
+        src: ./assets/icecast.xml
+        dest: /etc/icecast2/icecast.xml
+        owner: root
+        group: root
+        mode: "0666"
+      tags:
+        - radio
+        - icecast
+        - icecast2
+
+    - name: Adding user icecast to group ubntu
+      ansible.builtin.user:
+        name: icecast
+        groups: ubuntu
+        append: true
+      tags:
+        - radio
+        - icecast
+        - icecast3
+
+    - name: Reload systemd configuration
+      ansible.builtin.systemd:
+        daemon_reload: true
+      tags:
+        - radio
+        - icecast              
+        - icecast4
+
+    - name: Restart icecast2 service
+      ansible.builtin.systemd:
+        name: icecast2
+        state: restarted
+        enabled: true
+      tags:
+        - radio
+        - icecast
+        - icecast4
+#---------EZStream Setup---------#
+    - name: Install Required Tools
+      ansible.builtin.package:
+        name:
+          - ezstream
+          - lame
+        state: present
+      tags:
+        - radio
+        - ezstream
+        - ezstream1
+
+    - name: Ensure the Pi_Radio_Server directory exists
+      ansible.builtin.file:
+        path: /home/ubuntu/Pi_Radio_Server/
+        owner: ubuntu
+        group: ubuntu
+        state: directory
+        mode: '0775'
+      tags:
+        - ezstream
+        - ezstream2
+
+    - name: Copy ezstream.xml file
+      ansible.builtin.copy:
+        src: ./assets/ezstream.xml
+        dest: /home/ubuntu/Pi_Radio_Server/ezstream.xml
+        owner: ubuntu
+        group: ubuntu
+        mode: "0760"
+      tags:
+        - radio
+        - ezstream
+        - ezstream3
+
+    - name: Copy ezstream.service file
+      ansible.builtin.copy:
+        src: ./assets/ezstream.service
+        dest: /etc/systemd/system/ezstream.service
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - radio
+        - ezstream
+        - ezstream4
+    - name: Reload systemd configuration
+      ansible.builtin.systemd:
+        daemon_reload: true
+      tags:
+        - radio
+        - ezstream              
+        - ezstream5
+
+    - name: Restart ezstream service
+      ansible.builtin.systemd:
+        name: ezstream
+        state: restarted
+        enabled: true
+      tags:
+        - radio
+        - ezstream
+        - ezstream6
+#---------GPSD and NTP Setup---------#
+    - name: Install Required Tools
+      ansible.builtin.package:
+        name:
+          - chrony
+          - gpsd
+          - gpsd-clients
+        state: present
+      tags:
+        - ntp
+        - ntp1
+
+    - name: Copy chrony.conf configure file
+      ansible.builtin.copy:
+        src: ./assets/chrony.conf
+        dest: /etc/chrony/chrony.conf
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - ntp
+        - ntp2
+
+    - name: Copy gpsd confifure file
+      ansible.builtin.copy:
+        src: ./assets/gpsd
+        dest: /etc/default/gpsd
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - ntp
+        - ntp3
+
+    - name: Copy chrony.service file
+      ansible.builtin.copy:
+        src: ./assets/chrony.service
+        dest: /etc/systemd/system/chrony.service
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - ntp
+        - ntp4
+
+    - name: Copy gpsd.service file
+      ansible.builtin.copy:
+        src: ./assets/gpsd.service
+        dest: /etc/systemd/system/gpsd.service
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - ntp
+        - ntp5
+
+    - name: Copy README_ntp.md
+      ansible.builtin.copy:
+        src: ./README_ntp.md
+        dest: /home/ubuntu/README_ntp.md
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+      tags:
+        - ntp
+        - ntp6
+
+    - name: Reload Systemd configuration
+      ansible.builtin.service:
+        daemon_reload: true
+      tags:
+        - ntp
+        - ntp7
+
+    - name: Restart GPSD serv/ice
+      ansible.builtin.service:
+        name: gpsd
+        state: restarted
+        enabled: yes
+      tags:
+        - ntp
+        - ntp8
+
+    - name: Restart Chrony service
+      ansible.builtin.service:
+        name: chrony
+        state: restarted
+        enabled: yes
+      tags:
+        - ntp
+        - ntp9
+#----------mpd-usermode----------#
+    - name: Install Required Tools
+      ansible.builtin.package:
+        name:
+          - mpd
+          - mpc
+        state: present
+      tags:
+        - mpd-usermode
+        - mpd-usermode1  
+
+    - name: Ensure the destination directory exists
+      ansible.builtin.file:
+        path: "{{ item.dest }}"
+        mode: "{{ item.mode }}"
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        recurse: true
+        state: directory
+      loop:
+        - { dest: '/home/ubuntu/.config/', mode: '0774', owner: 'ubuntu', group: 'ubuntu' }
+        - { dest: '/home/ubuntu/.config/mpd', mode: '0774', owner: 'ubuntu', group: 'ubuntu' }
+        - { dest: '/home/ubuntu/.config/systemd/user', mode: '0774', owner: 'ubuntu', group: 'ubuntu' }
+        - { dest: '/home/ubuntu/.config/mpd/playlists/', mode: '0774', owner: 'ubuntu', group: 'ubuntu' }
+        - { dest: '/home/ubuntu/.config/mpd/music', mode: '0774', owner: 'ubuntu', group: 'ubuntu' }
+      tags:
+        - mpd-usermode
+        - mpd-usermode2  
+
+    - name: Stop and disable system-wide mpd.service
+      systemd:
+        name: mpd.service
+        state: stopped
+        enabled: false
+        daemon_reload: true
+      tags:
+        - mpd-usermode
+        - mpd-usermode3
+
+    - name: Stop and disable system-wide mpd.socket
+      systemd:
+        name: mpd.socket
+        state: stopped
+        enabled: false
+        daemon_reload: true
+      tags:
+        - mpd-usermode
+        - mpd-usermode4
+
+    - name: Copy mpd.conf file
+      ansible.builtin.copy:
+        src: ./assets/mpd.conf
+        dest: /home/ubuntu/.config/mpd/mpd.conf
+        force: yes
+        owner: ubuntu
+        group: ubuntu
+        mode: "0774"
+      tags:
+        - mpd-usermode
+        - mpd-usermode5
+
+
+    - name: Copy mpd.service file(usermode)
+      ansible.builtin.copy:
+        src: ./assets/mpd.service
+        dest: /etc/systemd/system/mpd.service
+        force: yes
+        owner: ubuntu
+        group: ubuntu
+        mode: "0774"
+      tags:
+        - mpd-usermode
+        - mpd-usermode6
+
+    - name: Enable lingering for user ubuntu
+      ansible.builtin.command: loginctl enable-linger ubuntu
+      become: true
+      tags:
+        - mpd-usermode
+        - mpd-usermode7
+
+    - name: Enable user-level mpd.service
+      systemd:
+        name: mpd.service
+        enabled: true
+        scope: user
+        daemon_reload: true
+      become: false
+      become_user: "{{ ansible_user | default(ansible_ssh_user) }}"
+      tags:
+        - mpd-usermode
+        - mpd-usermode8
+
+    - name: Reload Systemd configuration
+      ansible.builtin.service:
+        daemon_reload: true
+      tags:
+        - mpd-usermode
+        - mpd-usermode9
+        
+    - name: Start/restart user-level mpd.service
+      systemd:
+        name: mpd.service
+        state: restarted
+        scope: user
+        daemon_reload: true
+      become: false
+      become_user: "{{ ansible_user | default(ansible_ssh_user) }}"
+      tags:
+        - mpd-usermode
+        - mpd-usermode10
+
+
+#---------Pi_Mpd_Server Setup---------#
+    - name: Ensure the destination directory exists
+      ansible.builtin.file:
+        path: /home/ubuntu/Pi_Mpd_Server/
+        owner: ubuntu
+        group: ubuntu
+        state: directory
+        mode: '0775'
+      tags:
+        - mpdxx
+        - mpd1
+
+    - name: Clone Pi_Mpd_Server repository
+      ansible.builtin.git:
+        repo: git@github.com:J205025/Pi_Mpd_Server.git
+        dest: /home/ubuntu/Pi_Mpd_Server
+        version: main
+        accept_hostkey: yes
+      become: false  # Run as the remote user
+      tags:
+        - mpdxx      
+
+    - name: Clone or update the repository
+      ansible.builtin.git:
+        repo: 'git@github.com:J205025/Pi_Mpd_Server.git' 
+        dest: /home/ubuntu/Pi_Mpd_Server/
+        version: main # The branch, tag, or commit to clone. 'main' is a common default.
+        accept_hostkey: yes # Automatically accept the GitHub host key.
+      tags:
+        - mpdx
+        - mpd2
+
+    - name: Copy Pi_Mpd_Server.service file
+      ansible.builtin.copy:
+        src: ./assets/Pi_Mpd_Server.service
+        dest: /etc/systemd/system/
+        owner: root
+        group: root
+        mode: "0644"
+      tags:
+        - mpd
+        - mpd3
+    - name: Reload Systemd configuration
+      ansible.builtin.service:
+        daemon_reload: true
+      tags:
+        - mpd
+        - mpd4
+    - name: Restart mpd serv/ice
+      ansible.builtin.service:
+        name: Pi_Mpd_Server
+        state: restarted
+        enabled: yes
+      tags:
+        - mpd
+        - mpd5
+#---------Ubuntu language-pack-zh-hant---------#
+    - name: Install Required Tools
+      ansible.builtin.package:
+        name:
+          - language-pack-zh-hant
+        state: present
+      tags:
+        - tw
+        - tw1 
+
+

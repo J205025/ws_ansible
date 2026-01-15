@@ -1,0 +1,26 @@
+version: "3"
+agent:
+    authtoken: 
+#3rvBbdocUGo811dZe8rPTYBJiJd_BGXmtRw75DHg9YSG3sim
+#remember to replace with your own authtoken(+1 -1)
+#remember to replace with your own authtoken(+1 -1)
+#remember to replace with your own authtoken(+1 -1)
+#remember to replace with your own authtoken(+1 -1)
+#remember to replace with your own authtoken(+1 -1)
+#remember to replace with your own authtoken(+1 -1)
+
+tunnels:
+  http_8100:
+    addr: 8100
+    proto: http
+  http_8200:
+    addr: 8200
+    proto: http
+      #  mpd_service:
+      #    addr: 6600
+      #    proto: tcp # MPD usually runs over TCP, not HTTP
+  icecast_service:
+    addr: 8600
+    proto: http # Icecast streaming is typically HTTP
+
+  

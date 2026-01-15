@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+
+<ezstream>
+
+  <servers>
+    <server>
+      <hostname>127.0.0.1</hostname>
+      <port>8600</port>
+      <password>Aa123456</password>
+    </server>
+  </servers>
+
+  <streams>
+    <stream>
+      <mountpoint>/ezstream.ogg</mountpoint>
+      <format>Ogg</format>
+      <stream_name>My ezstream Radio Stream</stream_name>
+      <stream_description>A  music Stream</stream_description>
+    </stream>
+  </streams>
+
+  <intakes>
+    <intake>
+            <filename>/home/ubuntu/Pi_Radio_Server/playlist.txt</filename>
+    </intake>
+  </intakes>
+
+</ezstream>
