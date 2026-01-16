@@ -1,19 +1,21 @@
-# ansible-playbook Pi_playbook.yml --tags "pi_Servers" --ask-become-pass
+# $ ansible-playbook Pi_playbook.yml --tags "pi_Servers" --ask-become-pass
+# $ ansible-lint helloworld.yml 來檢查語法有無問題。
+#------------------------------------------------------------------ 
+# [Master Machine]: $ sudo apt install ansible-core sshpass
+# [Managed Node]: $ sudo apt install openssh-server 
+# [Managed Node]: Be sure ssh login ok.
 
-#  sudo apt install openssh-server 
-# [Master Machine]: sudo apt install ansible-core sshpass
-# [Managed Node]:Be sure ssh login ok.
 ---
 - name: Pi_Playbook
   hosts: Pi_Servers # Pi_Hosts--> Pi_Servers
-  become: true
   tasks:
-#----------Update Linux System---------#
+#---------Update Linux System------------#
     - name: Update apt Package Cache
       ansible.builtin.apt:
         update_cache: true
+      become: yes        
       tags:
-        -  all
+        -  cache
 #---------Install Required Tools---------#
     - name: Install Required Tools
       ansible.builtin.package:
@@ -32,14 +34,38 @@
 #          - vsftpd
 #          - mpd
         state: present
+      become: yes           
       tags:
         - all 
         - software
-#-----------Install uv Tools-----------#
+
+
+#---------------uv--------------------------------
+    - name: Install uv
+      ansible.builtin.shell: curl -LsSf https://astral.sh/uv/install.sh | sh    
+      args:
+        # This prevents the command from running if 'uv' already exists at this path.
+        # Check where the script installs it (usually ~/.cargo/bin/uv or ~/.local/bin/uv).
+        creates: "{{ ansible_env.HOME }}/.cargo/bin/uv"
+      tags: install_uv
+
+    # Optional: Verify it was installed
+    - name: Verify uv installation
+      command: "{{ ansible_env.HOME }}/.cargo/bin/uv --version"
+      register: uv_version
+      changed_when: false
+      tags: install_uv
+
+    - name: Print uv version
+      debug:
+        msg: "uv version is: {{ uv_version.stdout }}"
+      tags: install_uv
+
+
+#-----------Install uv Tools----------------#
     - name: Install uv
       ansible.builtin.shell: curl -LsSf https://astral.sh/uv/install.sh | sh
       args:
-            # Change path to /root/.cargo/bin/uv if running as root
           creates: /home/ubuntu/.cargo/bin/uv 
       become: false
       tags:

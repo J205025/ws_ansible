@@ -1,2 +1,2 @@
 [Pi_Servers]
-Pi_01 ansible_host=192.168.90.106 ansible_connection=ssh ansible_user=ubuntu ansible_ssh_pass=mqlin321
+Pi_01 ansible_host=192.168.90.71 ansible_connection=ssh ansible_user=ubuntu ansible_ssh_pass=mqlin321
